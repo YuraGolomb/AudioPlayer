@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Web Audio API</title>
+	<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="wrapper">
+
+	<input type="file" id="files" name="files[]" multiple />
+	<output id="list"></output>
+
+	<div id="player"></div>
+
+	</p>
+        <audio id="audio-player" onended="onEnded()">
+            HTML5 audio not supported
+        </audio>
+    <p>
+    <p>The song is now playing: <span id="audio-name">...</span></p>
+
+    <button id="play" onclick="play()">
+    	Play
+    </button>
+    <button id="stop" onclick="stop()">
+    	Stop
+    </button>
+    <button id="next" onclick="next()">
+    	Next
+    </button>
+    <button id="prev" onclick="prev()">
+    	Prev
+    </button>
+    <label for="loop">Loop</label><input id="loop" type="checkbox">
+
+    <input type="range" defaultValue="50" id="volume" max="100" min="0" step="1">
+
+	<p>
+        <canvas id="canvas" width="500" height="20">
+            canvas not supported
+        </canvas>
+    </p>
+    <p>
+    	<canvas id="osc" width="500" height="20">
+    		canvas not supported
+    	</canvas>
+    </p>
+	<p>PlayList:</p>
+	<ol id="audio-list">
+		
+	</ol>
+
+	<script>
+
+
+		var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+		var analyser = audioCtx.createAnalyser();
+		var source;
+
+		var audios = []; // array of audio files
+		var audiosCount = 0; // num of audios
+		var gainNode; // Volume 
+		var currentAudio = 0;
+		var url; // url for audio
+
+
+		var audioList = document.getElementById('audio-list');
+		var audioPlayer = document.getElementById('audio-player');
+		var player = document.getElementById('player');
+
+		createAudioSource()
+
+		function play(){
+			var btn = document.getElementById('play');
+			if (audioPlayer.paused) {
+	            audioPlayer.play();
+	            btn.textContent = "Pause";
+	        }
+	        else {
+	            audioPlayer.pause();
+	            btn.textContent = "Play";
+	        }
+		}
+
+		function onEnded(){
+			if(!document.getElementById('loop').checked)
+			{
+				next();
+			}
+			audioPlayer.play()
+		}
+
+		function stop(){
+			audioPlayer.pause()
+			audioPlayer.currentTime = 0;
+		}
+
+		function next(){
+			if(currentAudio < audiosCount-1)
+				currentAudio++;
+		
+			var name = document.getElementById('audio' + currentAudio).innerHTML;
+			document.getElementById('audio-name').innerHTML = name;
+
+			url = window.URL.createObjectURL(audios[currentAudio]);//creating url for audioFile
+
+			audioPlayer.setAttribute("src", url);//moving url into audio tag
+
+			audioPlayer.play()
+		}
+
+		function prev(){
+			if(currentAudio > 0)
+				currentAudio--;
+
+			var name = document.getElementById('audio' + currentAudio).innerHTML;
+			document.getElementById('audio-name').innerHTML = name;
+
+			url = window.URL.createObjectURL(audios[currentAudio]);//creating url for audioFile
+
+			audioPlayer.setAttribute("src", url);
+
+			audioPlayer.play()
+		}
+
+		function changeVolume(event) {
+			var fraction = parseInt(event.target.value) / parseInt(event.target.max);
+
+			gainNode.gain.value = fraction;
+		};
+
+
+		function progressBar() { 
+		    var oAudio = document.getElementById('audio-player'); 
+		    //get current time in seconds
+		    var elapsedTime = Math.round(oAudio.currentTime);
+		    //update the progress bar
+		    if (canvas.getContext) {
+		        var ctx = canvas.getContext("2d");
+		        //clear canvas before painting
+		        ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+		        ctx.fillStyle = "rgb(143,195,59)";
+		        var fWidth = (elapsedTime / oAudio.duration) * (canvas.clientWidth);
+		        if (fWidth > 0) {
+		            ctx.fillRect(0, 0, fWidth, canvas.clientHeight);
+		        }
+		    }
+		}
+
+		function selectAudio(audio){
+			var name = document.getElementById('audio' + audio).innerHTML;
+			document.getElementById('audio-name').innerHTML = name;
+
+			currentAudio = audio;
+
+			url = window.URL.createObjectURL(audios[audio]);
+
+			audioPlayer.setAttribute("src", url);
+
+			audioPlayer.play()
+			
+		}
+
+	 	function createAudioSource() {
+		    var audioPlayer = document.getElementById('audio-player');
+		    source = audioCtx.createMediaElementSource(audioPlayer);
+		    gainNode = audioCtx.createGain();
+		    gainNode.gain.value = 0.5;
+		    source.connect(analyser);
+		    analyser.connect(gainNode);
+		    gainNode.connect(audioCtx.destination);
+
+		    analyser.fftSize = 2048;
+			var bufferLength = analyser.frequencyBinCount;
+			var dataArray = new Uint8Array(bufferLength);
+
+			analyser.getByteTimeDomainData(dataArray);
+	  	}
+
+	    function handleFileSelect(evt) {
+		    var files = evt.target.files; // FileList object
+
+		    for (var i = 0, f; f = files[i]; i++) {
+
+		     	if (!f.type.match('audio.*')) {
+		        	continue;
+		     	}
+
+		     	(function(audioFile) {
+		     		audios.push(audioFile);
+		     		let audioItem = document.createElement('li');
+		       		audioItem.innerHTML = 
+			       		'<span id="audio' + audiosCount + '" ondblclick="selectAudio(' + audiosCount++ + ')">' + audioFile.name + '</span>';
+
+		       		audioList.appendChild(audioItem);
+
+		     	})(f);
+		    }
+	  	}
+
+	  	function initEvents() {
+                var canvas = document.getElementById('canvas');  
+                var oAudio = document.getElementById('audio-player');
+
+                //set up event to toggle play button to pause when playing
+                oAudio.addEventListener("playing", function() {
+                    document.getElementById("play").textContent = "Pause";
+                }, true);
+
+                //set up event to toggle play button to play when paused
+                oAudio.addEventListener("pause", function() {
+                    document.getElementById("play").textContent = "Play";
+                }, true);
+                //set up event to update the progress bar
+                oAudio.addEventListener("timeupdate", progressBar, true); 
+                //set up mouse click to control position of audio
+                canvas.addEventListener("click", function(e) {
+                    //this might seem redundant, but this these are needed later - make global to remove these
+                    var oAudio = document.getElementById('audio-player'); 
+                    var canvas = document.getElementById('canvas');            
+
+                    if (!e) {
+                        e = window.event;
+                    } //get the latest windows event if it isn't set
+                    try {
+                        //calculate the current time based on position of mouse cursor in canvas box
+                        oAudio.currentTime = oAudio.duration * (e.offsetX / canvas.clientWidth);
+                    }
+                    catch (err) {
+                    // Fail silently but show in F12 developer tools console
+                        if (window.console && console.error("Error:" + err));
+                    }
+                }, true);
+            }
+            //this event gets fired when a page has loaded
+            window.addEventListener("DOMContentLoaded", initEvents, false);
+
+	  	document.getElementById('files').addEventListener('change', handleFileSelect, false);
+	  	document.getElementById('volume').addEventListener('change', changeVolume, false);
+	</script>	
+</div>
+</body>
+</html>
