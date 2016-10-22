@@ -73,14 +73,35 @@
 
 		function play(){
 			var btn = document.getElementById('play');
-			if (audioPlayer.paused) {
-	            audioPlayer.play();
-	            btn.textContent = "Pause";
-	        }
-	        else {
-	            audioPlayer.pause();
-	            btn.textContent = "Play";
-	        }
+
+			if (!audioPlayer.getAttribute('src')){ // if there are any song and none selected
+				if(audiosCount !== 0){
+					var name = document.getElementById('audio' + 0).innerHTML;
+					document.getElementById('audio-name').innerHTML = name;
+
+					currentAudio = 0;
+
+					url = window.URL.createObjectURL(audios[0]);
+
+					audioPlayer.setAttribute("src", url);
+;
+					audioPlayer.play()
+					btn.textContent = "Pause";
+				}
+
+			}
+			else{
+				
+				if (audioPlayer.paused) {
+		            audioPlayer.play();
+		            btn.textContent = "Pause";
+		        }
+		        else {
+		            audioPlayer.pause();
+		            btn.textContent = "Play";
+		        }
+			}
+				
 		}
 
 		function onEnded(){
@@ -187,7 +208,7 @@
 		        	continue;
 		     	}
 
-		     	(function(audioFile) {
+		     	(function(audioFile) { // creating html element with name of the song
 		     		audios.push(audioFile);
 		     		let audioItem = document.createElement('li');
 		       		audioItem.innerHTML = 
